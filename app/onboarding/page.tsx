@@ -1,73 +1,94 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Sparkles, Check } from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 const AFFIRMATION_AREAS = [
   {
     id: "confidence",
-    title: "Build Confidence",
-    description: "Self-worth, courage, and inner strength",
-    icon: "💪",
+    title: "Confidence",
+    description: "Build self-worth and inner strength",
+    color: "bg-purple-500",
   },
   {
     id: "success",
-    title: "Achieve Success",
-    description: "Goals, career growth, and accomplishments",
-    icon: "🎯",
+    title: "Success",
+    description: "Achieve goals and grow your career",
+    color: "bg-purple-600",
   },
   {
     id: "health",
-    title: "Improve Health",
-    description: "Physical wellness, energy, and vitality",
-    icon: "🌱",
+    title: "Health",
+    description: "Improve physical wellness",
+    color: "bg-purple-400",
   },
   {
     id: "relationships",
-    title: "Better Relationships",
-    description: "Love, connection, and communication",
-    icon: "💝",
+    title: "Relationships",
+    description: "Strengthen love and connection",
+    color: "bg-purple-700",
   },
   {
     id: "mindset",
-    title: "Positive Mindset",
-    description: "Optimism, resilience, and mental clarity",
-    icon: "🧠",
+    title: "Mindset",
+    description: "Develop positive thinking",
+    color: "bg-purple-800",
   },
   {
     id: "creativity",
-    title: "Boost Creativity",
-    description: "Innovation, inspiration, and artistic flow",
-    icon: "🎨",
+    title: "Creativity",
+    description: "Boost innovation and ideas",
+    color: "bg-purple-300",
   },
   {
     id: "personal-growth",
-    title: "Personal Growth",
-    description: "Self-improvement and life development",
-    icon: "🌟",
+    title: "Growth",
+    description: "Focus on self-improvement",
+    color: "bg-purple-600",
   },
   {
     id: "gratitude",
-    title: "Practice Gratitude",
-    description: "Appreciation, mindfulness, and joy",
-    icon: "🙏",
+    title: "Gratitude",
+    description: "Practice appreciation daily",
+    color: "bg-purple-500",
   },
 ]
+
+interface AreaStats {
+  [key: string]: {
+    affirmationCount: number
+    userCount: number
+  }
+}
 
 export default function OnboardingPage() {
   const [selectedAreas, setSelectedAreas] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
+  const [areaStats, setAreaStats] = useState<AreaStats>({})
   const { user } = useAuth()
   const router = useRouter()
 
-  // Redirect if not logged in
-  if (!user) {
-    router.push("/login")
-    return null
+  useEffect(() => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+    loadAreaStats()
+  }, [user])
+
+  const loadAreaStats = async () => {
+    try {
+      const response = await fetch("/api/admin/area-stats")
+      if (response.ok) {
+        const data = await response.json()
+        setAreaStats(data)
+      }
+    } catch (error) {
+      console.error("Error loading area stats:", error)
+    }
   }
 
   const toggleArea = (areaId: string) => {
@@ -98,57 +119,83 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen gradient-purple-main radial-pattern relative overflow-hidden">
-      <div className="relative z-10 max-w-md mx-auto px-4 py-6">
+      <div className="relative z-10 max-w-lg mx-auto px-4 py-6">
         {/* Header */}
         <div className="text-center mb-8 pt-4">
           <div className="mx-auto w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-4">
             <Sparkles className="h-6 w-6 text-white" />
           </div>
           <h1 className="text-2xl font-light text-white mb-2">Show me affirmations to help me...</h1>
-          <p className="text-white/70 text-sm">Choose areas you'd like to focus on (select 1-3)</p>
         </div>
 
-        {/* Areas Grid */}
-        <div className="space-y-3 mb-8">
+        {/* Grid Layout - Headspace Style */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
           {AFFIRMATION_AREAS.map((area) => {
             const isSelected = selectedAreas.includes(area.id)
             return (
-              <Card
+              <div
                 key={area.id}
-                className={`cursor-pointer transition-all duration-200 ${
-                  isSelected ? "bg-white/20 border-white/40 shadow-lg" : "bg-white/5 border-white/20 hover:bg-white/10"
-                }`}
+                className={`
+                  ${area.color} 
+                  rounded-2xl p-6 cursor-pointer transition-all duration-300 
+                  hover:scale-105 hover:shadow-xl relative min-h-[120px]
+                  flex flex-col justify-between
+                  ${isSelected ? "ring-4 ring-white/50 shadow-2xl scale-105" : ""}
+                `}
                 onClick={() => toggleArea(area.id)}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl">{area.icon}</div>
-                    <div className="flex-1">
-                      <h3 className="text-white font-medium">{area.title}</h3>
-                      <p className="text-white/60 text-sm">{area.description}</p>
-                    </div>
-                    {isSelected && (
-                      <div className="w-6 h-6 bg-white/30 rounded-full flex items-center justify-center">
-                        <Check className="h-4 w-4 text-white" />
-                      </div>
-                    )}
+                {/* Selection indicator */}
+                {isSelected && (
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <Check className="h-5 w-5 text-purple-600" />
                   </div>
-                </CardContent>
-              </Card>
+                )}
+
+                {/* Content */}
+                <div className="flex-1 flex flex-col justify-center">
+                  <h3 className="text-white font-semibold text-lg mb-2 leading-tight">{area.title}</h3>
+                  <p className="text-white/80 text-sm leading-relaxed">{area.description}</p>
+                </div>
+
+                {/* Subtle decorative element */}
+                <div className="absolute bottom-4 right-4 w-8 h-8 bg-white/10 rounded-full"></div>
+                <div className="absolute bottom-6 right-6 w-4 h-4 bg-white/20 rounded-full"></div>
+              </div>
             )
           })}
         </div>
+
+        {/* Selected Areas Summary */}
+        {selectedAreas.length > 0 && (
+          <div className="text-center mb-6">
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
+              <p className="text-white/80 text-sm mb-3">Selected areas:</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {selectedAreas.map((areaId) => {
+                  const area = AFFIRMATION_AREAS.find((a) => a.id === areaId)
+                  return (
+                    <span key={areaId} className="bg-white/20 text-white text-xs px-3 py-1 rounded-full">
+                      {area?.title}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Continue Button */}
         <div className="space-y-4">
           <Button
             onClick={handleComplete}
             disabled={selectedAreas.length === 0 || loading}
-            className="w-full py-4 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium disabled:opacity-50"
+            className="w-full py-4 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium disabled:opacity-50 rounded-xl"
           >
             {loading
               ? "Setting up..."
-              : `Continue with ${selectedAreas.length} area${selectedAreas.length !== 1 ? "s" : ""}`}
+              : selectedAreas.length === 0
+                ? "Select at least one area"
+                : `Continue with ${selectedAreas.length} area${selectedAreas.length !== 1 ? "s" : ""}`}
           </Button>
 
           <div className="text-center">

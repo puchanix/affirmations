@@ -81,3 +81,115 @@
   border-radius: 50%;
   pointer-events: none;
 }
+
+/* Organic cloud shapes - each one unique */
+.cloud-shape {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(4px);
+}
+
+.cloud-shape-1 {
+  border-radius: 60px 40px 50px 35px;
+  transform: rotate(-2deg);
+}
+
+.cloud-shape-2 {
+  border-radius: 45px 55px 40px 60px;
+  transform: rotate(3deg);
+}
+
+.cloud-shape-3 {
+  border-radius: 50px 30px 45px 55px;
+  transform: rotate(-1deg);
+}
+
+.cloud-shape-4 {
+  border-radius: 35px 50px 60px 40px;
+  transform: rotate(2deg);
+}
+
+.cloud-shape-5 {
+  border-radius: 55px 45px 35px 50px;
+  transform: rotate(-3deg);
+}
+
+.cloud-shape-6 {
+  border-radius: 40px 60px 50px 30px;
+  transform: rotate(1deg);
+}
+
+.cloud-shape-7 {
+  border-radius: 50px 35px 55px 45px;
+  transform: rotate(-2deg);
+}
+
+.cloud-shape-8 {
+  border-radius: 45px 50px 40px 55px;
+  transform: rotate(2deg);
+}
+
+.cloud-shape:hover {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(6px);
+}
+
+/* Smooth animations */
+@keyframes cloud-float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(var(--rotation, 0deg));
+  }
+  33% {
+    transform: translateY(-8px) rotate(calc(var(--rotation, 0deg) + 1deg));
+  }
+  66% {
+    transform: translateY(4px) rotate(calc(var(--rotation, 0deg) - 1deg));
+  }
+}
+
+.cloud-shape-1 {
+  --rotation: -2deg;
+  animation: cloud-float 8s ease-in-out infinite;
+}
+
+.cloud-shape-2 {
+  --rotation: 3deg;
+  animation: cloud-float 7s ease-in-out infinite;
+  animation-delay: -1s;
+}
+
+.cloud-shape-3 {
+  --rotation: -1deg;
+  animation: cloud-float 9s ease-in-out infinite;
+  animation-delay: -2s;
+}
+
+.cloud-shape-4 {
+  --rotation: 2deg;
+  animation: cloud-float 6s ease-in-out infinite;
+  animation-delay: -3s;
+}
+
+.cloud-shape-5 {
+  --rotation: -3deg;
+  animation: cloud-float 8s ease-in-out infinite;
+  animation-delay: -4s;
+}
+
+.cloud-shape-6 {
+  --rotation: 1deg;
+  animation: cloud-float 7s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.cloud-shape-7 {
+  --rotation: -2deg;
+  animation: cloud-float 9s ease-in-out infinite;
+  animation-delay: -6s;
+}
+
+.cloud-shape-8 {
+  --rotation: 2deg;
+  animation: cloud-float 8s ease-in-out infinite;
+  animation-delay: -7s;
+}
