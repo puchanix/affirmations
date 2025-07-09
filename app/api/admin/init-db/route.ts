@@ -34,6 +34,7 @@ export async function POST() {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
+        name VARCHAR(255),
         password_hash VARCHAR(255) NOT NULL,
         goals TEXT[],
         created_at TIMESTAMP DEFAULT NOW(),
@@ -60,6 +61,18 @@ export async function POST() {
     await sql`CREATE INDEX IF NOT EXISTS idx_user_interactions_date ON user_affirmation_interactions(shown_date)`
     await sql`CREATE INDEX IF NOT EXISTS idx_affirmations_category ON affirmations(category)`
     await sql`CREATE INDEX IF NOT EXISTS idx_affirmations_active ON affirmations(is_active)`
+
+    // Add unique constraint for one affirmation per user per day
+    try {
+      await sql`
+        ALTER TABLE user_affirmation_interactions 
+        ADD CONSTRAINT unique_user_affirmation_date 
+        UNIQUE (user_id, shown_date)
+      `
+    } catch (error) {
+      // Constraint might already exist
+      console.log("Daily constraint may already exist")
+    }
 
     // Insert initial affirmations
     const existingCount = await sql`SELECT COUNT(*) as count FROM affirmations`

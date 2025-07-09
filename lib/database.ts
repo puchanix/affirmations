@@ -144,33 +144,6 @@ export async function updateUserStreak(userId: number, increment = true): Promis
 }
 
 // User interaction functions
-export async function recordUserInteraction(
-  userId: number,
-  affirmationId: number,
-  response: "affirmed" | "not_for_me",
-): Promise<void> {
-  await sql`
-    INSERT INTO user_affirmation_interactions (user_id, affirmation_id, shown_date, response, response_time)
-    VALUES (${userId}, ${affirmationId}, CURRENT_DATE, ${response}, NOW())
-    ON CONFLICT (user_id, affirmation_id, shown_date) 
-    DO UPDATE SET response = ${response}, response_time = NOW()
-  `
-
-  // Update user streak
-  if (response === "affirmed") {
-    await updateUserStreak(userId, true)
-  }
-}
-
-export async function getUserInteractions(userId: number): Promise<UserInteraction[]> {
-  const result = await sql`
-    SELECT * FROM user_affirmation_interactions 
-    WHERE user_id = ${userId}
-    ORDER BY shown_date DESC
-  `
-  return result as UserInteraction[]
-}
-
 export async function getTodaysInteraction(userId: number): Promise<UserInteraction | null> {
   const result = await sql`
     SELECT * FROM user_affirmation_interactions 
@@ -180,6 +153,15 @@ export async function getTodaysInteraction(userId: number): Promise<UserInteract
     LIMIT 1
   `
   return (result[0] as UserInteraction) || null
+}
+
+export async function getUserInteractions(userId: number): Promise<UserInteraction[]> {
+  const result = await sql`
+    SELECT * FROM user_affirmation_interactions 
+    WHERE user_id = ${userId}
+    ORDER BY shown_date DESC
+  `
+  return result as UserInteraction[]
 }
 
 export async function getUserStats(userId: number): Promise<{
@@ -204,5 +186,95 @@ export async function getUserStats(userId: number): Promise<{
     totalAffirmations: total,
     streak: user?.current_streak || 0,
     successRate: total > 0 ? Math.round((affirmed / total) * 100) : 0,
+  }
+}
+
+// Add a new function to get or create today's affirmation for a user
+export async function getTodaysAffirmationForUser(
+  userId: number,
+): Promise<{ affirmation: Affirmation; isNew: boolean }> {
+  // Check if user already has an affirmation for today
+  const existingInteraction = await sql`
+    SELECT uai.*, a.* 
+    FROM user_affirmation_interactions uai
+    JOIN affirmations a ON uai.affirmation_id = a.id
+    WHERE uai.user_id = ${userId} 
+    AND uai.shown_date = CURRENT_DATE
+    ORDER BY uai.created_at DESC
+    LIMIT 1
+  `
+
+  if (existingInteraction.length > 0) {
+    return {
+      affirmation: {
+        id: existingInteraction[0].affirmation_id,
+        content: existingInteraction[0].content,
+        category: existingInteraction[0].category,
+        tags: existingInteraction[0].tags,
+        created_at: existingInteraction[0].created_at,
+        created_by: existingInteraction[0].created_by,
+        is_active: existingInteraction[0].is_active,
+      },
+      isNew: false,
+    }
+  }
+
+  // Get all active affirmations
+  const affirmations = await getAllAffirmations()
+  if (affirmations.length === 0) {
+    throw new Error("No affirmations available")
+  }
+
+  // For now, select a random one (later we'll make this personalized)
+  const randomIndex = Math.floor(Math.random() * affirmations.length)
+  const selectedAffirmation = affirmations[randomIndex]
+
+  // Create the interaction record (this counts as "seeing" the affirmation)
+  await sql`
+    INSERT INTO user_affirmation_interactions (user_id, affirmation_id, shown_date, created_at)
+    VALUES (${userId}, ${selectedAffirmation.id}, CURRENT_DATE, NOW())
+  `
+
+  // Update user's streak and last affirmation date (seeing counts as engagement)
+  await sql`
+    UPDATE users 
+    SET current_streak = current_streak + 1,
+        last_affirmation_date = CURRENT_DATE
+    WHERE id = ${userId}
+  `
+
+  return {
+    affirmation: selectedAffirmation,
+    isNew: true,
+  }
+}
+
+// Update the recordUserInteraction to only update response, not create new records
+export async function recordUserInteraction(
+  userId: number,
+  affirmationId: number,
+  response: "affirmed" | "not_for_me",
+): Promise<void> {
+  // Update the existing interaction with the user's response
+  await sql`
+    UPDATE user_affirmation_interactions 
+    SET response = ${response}, response_time = NOW()
+    WHERE user_id = ${userId} 
+    AND affirmation_id = ${affirmationId} 
+    AND shown_date = CURRENT_DATE
+  `
+}
+
+// Add constraint to prevent duplicate daily interactions
+export async function addDailyConstraint(): Promise<void> {
+  try {
+    await sql`
+      ALTER TABLE user_affirmation_interactions 
+      ADD CONSTRAINT unique_user_affirmation_date 
+      UNIQUE (user_id, shown_date)
+    `
+  } catch (error) {
+    // Constraint might already exist
+    console.log("Daily constraint may already exist")
   }
 }

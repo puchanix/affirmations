@@ -1,8 +1,24 @@
-import { NextResponse } from "next/server"
-import { getAllAffirmations } from "@/lib/database"
+import { type NextRequest, NextResponse } from "next/server"
+import { getAllAffirmations, getTodaysAffirmationForUser } from "@/lib/database"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
+
+    if (userId) {
+      // Get user-specific daily affirmation
+      const { affirmation } = await getTodaysAffirmationForUser(Number(userId))
+      return NextResponse.json({
+        id: affirmation.id,
+        content: affirmation.content,
+        category: affirmation.category,
+        tags: affirmation.tags,
+      })
+    }
+
+    // For non-logged-in users, return a random affirmation (but same one per day)
+    const today = new Date().toDateString()
     const affirmations = await getAllAffirmations()
 
     if (affirmations.length === 0) {
@@ -14,10 +30,13 @@ export async function GET() {
       })
     }
 
-    // For now, return a random affirmation
-    // Later this will be personalized based on user preferences and history
-    const randomIndex = Math.floor(Math.random() * affirmations.length)
-    const selectedAffirmation = affirmations[randomIndex]
+    // Use date as seed for consistent daily selection for anonymous users
+    const dateHash = today.split("").reduce((a, b) => {
+      a = (a << 5) - a + b.charCodeAt(0)
+      return a & a
+    }, 0)
+    const index = Math.abs(dateHash) % affirmations.length
+    const selectedAffirmation = affirmations[index]
 
     return NextResponse.json({
       id: selectedAffirmation.id,
