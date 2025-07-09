@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Plus, Wand2, Save } from "lucide-react"
+import { Loader2, Plus, Wand2, Save, Check } from "lucide-react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
@@ -46,6 +46,7 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [generatedAffirmations, setGeneratedAffirmations] = useState<GeneratedAffirmation[]>([])
+  const [savedAffirmations, setSavedAffirmations] = useState<Set<string>>(new Set())
 
   // Generation form state
   const [genCategory, setGenCategory] = useState("")
@@ -70,7 +71,7 @@ export default function AdminPanel() {
 
       if (response.ok) {
         setDbInitialized(true)
-        loadAffirmations() // Reload affirmations after initialization
+        loadAffirmations()
       } else {
         console.error("Failed to initialize database")
       }
@@ -107,6 +108,10 @@ export default function AdminPanel() {
     if (!genCategory || !genTags) return
 
     setGenerating(true)
+    // Clear previous generated affirmations and saved state
+    setGeneratedAffirmations([])
+    setSavedAffirmations(new Set())
+
     try {
       const response = await fetch("/api/admin/generate-affirmations", {
         method: "POST",
@@ -130,6 +135,7 @@ export default function AdminPanel() {
 
   const saveAffirmation = async (
     affirmation: GeneratedAffirmation | { content: string; category: string; tags: string[] },
+    index?: number,
   ) => {
     try {
       const response = await fetch("/api/admin/affirmations", {
@@ -144,6 +150,12 @@ export default function AdminPanel() {
 
       if (response.ok) {
         loadAffirmations()
+
+        // Mark this generated affirmation as saved
+        if (typeof index === "number") {
+          setSavedAffirmations((prev) => new Set(prev).add(affirmation.content))
+        }
+
         // Clear form if it was manual creation
         if ("content" in affirmation && affirmation.content === newContent) {
           setNewContent("")
@@ -347,31 +359,44 @@ export default function AdminPanel() {
 
           {generatedAffirmations.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Generated Affirmations</h3>
-              {generatedAffirmations.map((affirmation, index) => (
-                <Card key={index}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="flex-1">
-                        <p className="text-lg mb-2">{affirmation.content}</p>
-                        <div className="flex gap-2 mb-2">
-                          <Badge variant="secondary">{affirmation.category}</Badge>
-                          {affirmation.tags.map((tag) => (
-                            <Badge key={tag} variant="outline">
-                              {tag}
-                            </Badge>
-                          ))}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Generated Affirmations</h3>
+                <p className="text-sm text-gray-600">Review and save the ones you like</p>
+              </div>
+              {generatedAffirmations.map((affirmation, index) => {
+                const isSaved = savedAffirmations.has(affirmation.content)
+                return (
+                  <Card key={index} className={isSaved ? "border-green-200 bg-green-50" : ""}>
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex-1">
+                          <p className="text-lg mb-2">{affirmation.content}</p>
+                          <div className="flex gap-2 mb-2">
+                            <Badge variant="secondary">{affirmation.category}</Badge>
+                            {affirmation.tags.map((tag) => (
+                              <Badge key={tag} variant="outline">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                          <p className="text-sm text-gray-600">{affirmation.reasoning}</p>
                         </div>
-                        <p className="text-sm text-gray-600">{affirmation.reasoning}</p>
+                        {isSaved ? (
+                          <Button size="sm" variant="outline" disabled className="bg-green-100 text-green-700">
+                            <Check className="mr-2 h-4 w-4" />
+                            Saved
+                          </Button>
+                        ) : (
+                          <Button onClick={() => saveAffirmation(affirmation, index)} size="sm">
+                            <Save className="mr-2 h-4 w-4" />
+                            Save to Database
+                          </Button>
+                        )}
                       </div>
-                      <Button onClick={() => saveAffirmation(affirmation)} size="sm">
-                        <Save className="mr-2 h-4 w-4" />
-                        Save
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                )
+              })}
             </div>
           )}
         </TabsContent>
