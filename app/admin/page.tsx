@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Loader2, Plus, Wand2, Save } from "lucide-react"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 
 interface Affirmation {
   id: number
@@ -148,7 +150,15 @@ export default function AdminPanel() {
 
   return (
     <div className="container mx-auto p-4 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-6">Affirmation Admin Panel</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/" className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Link>
+        </Button>
+        <h1 className="text-3xl font-bold">Affirmation Admin Panel</h1>
+      </div>
 
       <Tabs defaultValue="manage" className="space-y-6">
         <TabsList>

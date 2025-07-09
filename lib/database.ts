@@ -1,6 +1,23 @@
 import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.DATABASE_URL!)
+// Extract the actual connection URL from the psql command format
+function parseConnectionString(connectionString: string): string {
+  // If it's already a proper URL, return as-is
+  if (connectionString.startsWith("postgresql://")) {
+    return connectionString
+  }
+
+  // If it's in psql format, extract the URL
+  const match = connectionString.match(/'([^']+)'/)
+  if (match) {
+    return match[1]
+  }
+
+  // Fallback - assume it's the URL itself
+  return connectionString
+}
+
+const sql = neon(parseConnectionString(process.env.DATABASE_URL!))
 
 export interface Affirmation {
   id: number
