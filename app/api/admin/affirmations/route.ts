@@ -7,7 +7,6 @@ export async function GET() {
     return NextResponse.json(affirmations || [])
   } catch (error) {
     console.error("Error fetching affirmations:", error)
-    // Return empty array instead of error to prevent frontend crash
     return NextResponse.json([])
   }
 }
@@ -16,6 +15,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { content, category, tags, created_by = "admin", is_active = true } = body
+
+    console.log("Saving affirmation:", { content, category, tags, created_by, is_active })
 
     if (!content || !category) {
       return NextResponse.json({ error: "Content and category are required" }, { status: 400 })
@@ -29,9 +30,10 @@ export async function POST(request: NextRequest) {
       is_active,
     })
 
+    console.log("Affirmation saved successfully:", affirmation)
     return NextResponse.json(affirmation)
   } catch (error) {
     console.error("Error creating affirmation:", error)
-    return NextResponse.json({ error: "Failed to create affirmation" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to create affirmation", details: error.message }, { status: 500 })
   }
 }

@@ -2,18 +2,13 @@ import { neon } from "@neondatabase/serverless"
 
 // Extract the actual connection URL from the psql command format
 function parseConnectionString(connectionString: string): string {
-  // If it's already a proper URL, return as-is
   if (connectionString.startsWith("postgresql://")) {
     return connectionString
   }
-
-  // If it's in psql format, extract the URL
   const match = connectionString.match(/'([^']+)'/)
   if (match) {
     return match[1]
   }
-
-  // Fallback - assume it's the URL itself
   return connectionString
 }
 
@@ -48,34 +43,54 @@ export interface UserInteraction {
 
 // Affirmation functions
 export async function getAllAffirmations(): Promise<Affirmation[]> {
-  const result = await sql`
-    SELECT * FROM affirmations 
-    WHERE is_active = true 
-    ORDER BY created_at DESC
-  `
-  return result as Affirmation[]
+  try {
+    const result = await sql`
+      SELECT * FROM affirmations 
+      WHERE is_active = true 
+      ORDER BY created_at DESC
+    `
+    console.log("Retrieved affirmations:", result.length)
+    return result as Affirmation[]
+  } catch (error) {
+    console.error("Database error in getAllAffirmations:", error)
+    throw error
+  }
 }
 
 export async function createAffirmation(affirmation: Omit<Affirmation, "id" | "created_at">): Promise<Affirmation> {
-  const result = await sql`
-    INSERT INTO affirmations (content, category, tags, created_by, is_active)
-    VALUES (${affirmation.content}, ${affirmation.category}, ${affirmation.tags}, ${affirmation.created_by}, ${affirmation.is_active})
-    RETURNING *
-  `
-  return result[0] as Affirmation
+  try {
+    console.log("Creating affirmation in database:", affirmation)
+
+    const result = await sql`
+      INSERT INTO affirmations (content, category, tags, created_by, is_active)
+      VALUES (${affirmation.content}, ${affirmation.category}, ${affirmation.tags}, ${affirmation.created_by}, ${affirmation.is_active})
+      RETURNING *
+    `
+
+    console.log("Database insert result:", result)
+    return result[0] as Affirmation
+  } catch (error) {
+    console.error("Database error in createAffirmation:", error)
+    throw error
+  }
 }
 
 export async function updateAffirmation(id: number, updates: Partial<Affirmation>): Promise<Affirmation> {
-  const result = await sql`
-    UPDATE affirmations 
-    SET content = COALESCE(${updates.content}, content),
-        category = COALESCE(${updates.category}, category),
-        tags = COALESCE(${updates.tags}, tags),
-        is_active = COALESCE(${updates.is_active}, is_active)
-    WHERE id = ${id}
-    RETURNING *
-  `
-  return result[0] as Affirmation
+  try {
+    const result = await sql`
+      UPDATE affirmations 
+      SET content = COALESCE(${updates.content}, content),
+          category = COALESCE(${updates.category}, category),
+          tags = COALESCE(${updates.tags}, tags),
+          is_active = COALESCE(${updates.is_active}, is_active)
+      WHERE id = ${id}
+      RETURNING *
+    `
+    return result[0] as Affirmation
+  } catch (error) {
+    console.error("Database error in updateAffirmation:", error)
+    throw error
+  }
 }
 
 // User functions
