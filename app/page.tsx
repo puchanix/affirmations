@@ -119,12 +119,8 @@ export default function HomePage() {
   return (
     <div className="min-h-screen gradient-purple-main radial-pattern relative overflow-hidden">
       <div className="relative z-10 max-w-md mx-auto px-4 py-6">
-        {/* Minimal Header */}
-        <header className="flex items-center justify-between mb-8 pt-4">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-white" />
-            <h1 className="text-lg font-light text-white">Daily Affirmations</h1>
-          </div>
+        {/* Minimal Header - Just logout for logged in users */}
+        <header className="flex justify-end mb-8 pt-4">
           {user && (
             <Button
               onClick={logout}
@@ -261,9 +257,9 @@ export default function HomePage() {
                       variant="ghost"
                       className="flex-1 text-white/70 hover:text-white hover:bg-white/10 border border-white/20"
                     >
-                      <Link href="/settings" className="flex items-center gap-2">
+                      <Link href="/onboarding" className="flex items-center gap-2">
                         <Settings className="h-4 w-4" />
-                        Settings
+                        Preferences
                       </Link>
                     </Button>
                   </div>

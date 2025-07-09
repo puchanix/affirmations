@@ -219,13 +219,33 @@ export async function getTodaysAffirmationForUser(
     }
   }
 
-  // Get all active affirmations
-  const affirmations = await getAllAffirmations()
+  // Get user's goals for personalization
+  const user = await getUserById(userId)
+  const userGoals = user?.goals || []
+
+  // Get affirmations that match user's goals, or all if no goals set
+  let affirmations: Affirmation[]
+  if (userGoals.length > 0) {
+    affirmations = await sql`
+      SELECT * FROM affirmations 
+      WHERE is_active = true 
+      AND category = ANY(${userGoals})
+      ORDER BY created_at DESC
+    `
+
+    // If no affirmations match user goals, fall back to all affirmations
+    if (affirmations.length === 0) {
+      affirmations = await getAllAffirmations()
+    }
+  } else {
+    affirmations = await getAllAffirmations()
+  }
+
   if (affirmations.length === 0) {
     throw new Error("No affirmations available")
   }
 
-  // For now, select a random one (later we'll make this personalized)
+  // Select a random one from the filtered set
   const randomIndex = Math.floor(Math.random() * affirmations.length)
   const selectedAffirmation = affirmations[randomIndex]
 
