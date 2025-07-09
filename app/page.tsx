@@ -4,7 +4,8 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Sparkles, Flame, Settings, BarChart3 } from "lucide-react"
+import { Sparkles, Flame, Settings, BarChart3, LogOut } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 interface TodaysAffirmation {
   id: number
@@ -17,15 +18,18 @@ export default function HomePage() {
   const [affirmation, setAffirmation] = useState<TodaysAffirmation | null>(null)
   const [loading, setLoading] = useState(true)
   const [responded, setResponded] = useState(false)
-  const [isRegistered, setIsRegistered] = useState(false) // TODO: Check actual auth status
-  const [streak, setStreak] = useState(7)
   const [response, setResponse] = useState<"affirmed" | "not_for_me" | null>(null)
+  const [stats, setStats] = useState({ totalAffirmations: 0, streak: 0, successRate: 0 })
+
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     loadTodaysAffirmation()
-    // TODO: Check if user is logged in
-    // setIsRegistered(checkAuthStatus())
-  }, [])
+    if (user) {
+      loadUserStats()
+      checkTodaysResponse()
+    }
+  }, [user])
 
   const loadTodaysAffirmation = async () => {
     try {
@@ -47,21 +51,58 @@ export default function HomePage() {
     }
   }
 
+  const loadUserStats = async () => {
+    if (!user) return
+
+    try {
+      const response = await fetch(`/api/user/stats?userId=${user.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        setStats(data)
+      }
+    } catch (error) {
+      console.error("Error loading user stats:", error)
+    }
+  }
+
+  const checkTodaysResponse = async () => {
+    if (!user) return
+
+    try {
+      const response = await fetch(`/api/user/todays-response?userId=${user.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.response) {
+          setResponse(data.response)
+          setResponded(true)
+        }
+      }
+    } catch (error) {
+      console.error("Error checking today's response:", error)
+    }
+  }
+
   const handleResponse = async (userResponse: "affirmed" | "not_for_me") => {
     setResponse(userResponse)
     setResponded(true)
 
-    try {
-      await fetch("/api/user-response", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          affirmation_id: affirmation?.id,
-          response: userResponse,
-        }),
-      })
-    } catch (error) {
-      console.error("Error saving response:", error)
+    if (user && affirmation) {
+      try {
+        await fetch("/api/user/response", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            affirmationId: affirmation.id,
+            response: userResponse,
+          }),
+        })
+
+        // Reload stats to get updated streak
+        loadUserStats()
+      } catch (error) {
+        console.error("Error saving response:", error)
+      }
     }
   }
 
@@ -78,14 +119,27 @@ export default function HomePage() {
       <div className="relative z-10 max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Header */}
         <header className="text-center pt-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Sparkles className="h-5 w-5 text-white" />
-            <h1 className="text-xl font-light text-white">Daily Affirmations</h1>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-white" />
+              <h1 className="text-xl font-light text-white">Daily Affirmations</h1>
+            </div>
+            {user && (
+              <Button
+                onClick={logout}
+                variant="ghost"
+                size="sm"
+                className="text-white/60 hover:text-white hover:bg-white/10"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            )}
           </div>
-          {isRegistered && (
+
+          {user && (
             <div className="flex items-center justify-center gap-2 text-white/80">
               <Flame className="h-4 w-4 text-yellow-300" />
-              <span className="text-sm">{streak} day streak</span>
+              <span className="text-sm">{stats.streak} day streak</span>
             </div>
           )}
         </header>
@@ -140,20 +194,20 @@ export default function HomePage() {
         </Card>
 
         {/* Registered User Content */}
-        {isRegistered && responded && (
+        {user && responded && (
           <div className="space-y-4">
             {/* Quick Stats */}
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-white text-xl font-light">{streak}</div>
+                <div className="text-white text-xl font-light">{stats.streak}</div>
                 <div className="text-white/60 text-xs">Streak</div>
               </div>
               <div className="text-center">
-                <div className="text-white text-xl font-light">23</div>
+                <div className="text-white text-xl font-light">{stats.totalAffirmations}</div>
                 <div className="text-white/60 text-xs">Total</div>
               </div>
               <div className="text-center">
-                <div className="text-white text-xl font-light">92%</div>
+                <div className="text-white text-xl font-light">{stats.successRate}%</div>
                 <div className="text-white/60 text-xs">Rate</div>
               </div>
             </div>
@@ -185,7 +239,7 @@ export default function HomePage() {
         )}
 
         {/* New User Promotional Content */}
-        {!isRegistered && (
+        {!user && (
           <div className="space-y-4">
             <div className="text-center space-y-3">
               <h2 className="text-white text-lg font-light">

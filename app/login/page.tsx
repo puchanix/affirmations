@@ -3,20 +3,36 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const { login } = useAuth()
+  const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement actual login
-    console.log("Login:", { email, password })
+    setLoading(true)
+    setError("")
+
+    try {
+      await login(email, password)
+      router.push("/")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to login")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -37,6 +53,8 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
+              {error && <div className="text-red-300 text-sm text-center bg-red-500/10 p-2 rounded">{error}</div>}
+
               <div>
                 <Input
                   type="email"
@@ -59,9 +77,17 @@ export default function LoginPage() {
               </div>
               <Button
                 type="submit"
+                disabled={loading}
                 className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50"
               >
-                Sign In
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing In...
+                  </>
+                ) : (
+                  "Sign In"
+                )}
               </Button>
             </form>
             <div className="text-center mt-4">

@@ -3,21 +3,37 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
+import { useAuth } from "@/lib/auth-context"
 
 export default function SignupPage() {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const { signup } = useAuth()
+  const router = useRouter()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement actual signup
-    console.log("Signup:", { name, email, password })
+    setLoading(true)
+    setError("")
+
+    try {
+      await signup(name, email, password)
+      router.push("/")
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create account")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -38,6 +54,8 @@ export default function SignupPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
+              {error && <div className="text-red-300 text-sm text-center bg-red-500/10 p-2 rounded">{error}</div>}
+
               <div>
                 <Input
                   type="text"
@@ -61,18 +79,27 @@ export default function SignupPage() {
               <div>
                 <Input
                   type="password"
-                  placeholder="Password"
+                  placeholder="Password (min 6 characters)"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-white/10 border-white/20 text-white placeholder:text-white/50"
                   required
+                  minLength={6}
                 />
               </div>
               <Button
                 type="submit"
+                disabled={loading}
                 className="w-full bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50"
               >
-                Create Account
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
             </form>
             <div className="text-center mt-4">
