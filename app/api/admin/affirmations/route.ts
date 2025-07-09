@@ -4,10 +4,11 @@ import { getAllAffirmations, createAffirmation } from "@/lib/database"
 export async function GET() {
   try {
     const affirmations = await getAllAffirmations()
-    return NextResponse.json(affirmations)
+    return NextResponse.json(affirmations || [])
   } catch (error) {
     console.error("Error fetching affirmations:", error)
-    return NextResponse.json({ error: "Failed to fetch affirmations" }, { status: 500 })
+    // Return empty array instead of error to prevent frontend crash
+    return NextResponse.json([])
   }
 }
 

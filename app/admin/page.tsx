@@ -58,6 +58,29 @@ export default function AdminPanel() {
   const [newCategory, setNewCategory] = useState("")
   const [newTags, setNewTags] = useState("")
 
+  const [initializingDb, setInitializingDb] = useState(false)
+  const [dbInitialized, setDbInitialized] = useState(false)
+
+  const initializeDatabase = async () => {
+    setInitializingDb(true)
+    try {
+      const response = await fetch("/api/admin/init-db", {
+        method: "POST",
+      })
+
+      if (response.ok) {
+        setDbInitialized(true)
+        loadAffirmations() // Reload affirmations after initialization
+      } else {
+        console.error("Failed to initialize database")
+      }
+    } catch (error) {
+      console.error("Error initializing database:", error)
+    } finally {
+      setInitializingDb(false)
+    }
+  }
+
   useEffect(() => {
     loadAffirmations()
   }, [])
@@ -65,10 +88,16 @@ export default function AdminPanel() {
   const loadAffirmations = async () => {
     try {
       const response = await fetch("/api/admin/affirmations")
-      const data = await response.json()
-      setAffirmations(data)
+      if (response.ok) {
+        const data = await response.json()
+        setAffirmations(Array.isArray(data) ? data : [])
+      } else {
+        console.error("Failed to load affirmations")
+        setAffirmations([])
+      }
     } catch (error) {
       console.error("Error loading affirmations:", error)
+      setAffirmations([])
     } finally {
       setLoading(false)
     }
@@ -160,6 +189,30 @@ export default function AdminPanel() {
         <h1 className="text-3xl font-bold">Affirmation Admin Panel</h1>
       </div>
 
+      {affirmations.length === 0 && !loading && (
+        <Card className="mb-6 border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-blue-900">Database Setup Required</h3>
+                <p className="text-sm text-blue-700">Initialize your database with tables and sample affirmations.</p>
+              </div>
+              <Button onClick={initializeDatabase} disabled={initializingDb} className="bg-blue-600 hover:bg-blue-700">
+                {initializingDb ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Initializing...
+                  </>
+                ) : (
+                  "Initialize Database"
+                )}
+              </Button>
+            </div>
+            {dbInitialized && <p className="text-sm text-green-700 mt-2">✅ Database initialized successfully!</p>}
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="manage" className="space-y-6">
         <TabsList>
           <TabsTrigger value="manage">Manage Affirmations</TabsTrigger>
@@ -170,33 +223,44 @@ export default function AdminPanel() {
         <TabsContent value="manage" className="space-y-4">
           <div className="grid gap-4">
             <h2 className="text-xl font-semibold">Current Affirmations ({affirmations.length})</h2>
-            {affirmations.map((affirmation) => (
-              <Card key={affirmation.id} className={!affirmation.is_active ? "opacity-50" : ""}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1">
-                      <p className="text-lg mb-2">{affirmation.content}</p>
-                      <div className="flex gap-2 mb-2">
-                        <Badge variant="secondary">{affirmation.category}</Badge>
-                        {affirmation.tags.map((tag) => (
-                          <Badge key={tag} variant="outline">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                      <p className="text-sm text-gray-500">Created by: {affirmation.created_by}</p>
-                    </div>
-                    <Button
-                      variant={affirmation.is_active ? "destructive" : "default"}
-                      size="sm"
-                      onClick={() => toggleAffirmation(affirmation.id, affirmation.is_active)}
-                    >
-                      {affirmation.is_active ? "Deactivate" : "Activate"}
-                    </Button>
-                  </div>
+            {affirmations.length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-gray-500 mb-4">
+                    No affirmations found. Create some using the AI Generator or Manual Create tabs.
+                  </p>
+                  <p className="text-sm text-gray-400">Make sure your database is set up correctly.</p>
                 </CardContent>
               </Card>
-            ))}
+            ) : (
+              affirmations.map((affirmation) => (
+                <Card key={affirmation.id} className={!affirmation.is_active ? "opacity-50" : ""}>
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="flex-1">
+                        <p className="text-lg mb-2">{affirmation.content}</p>
+                        <div className="flex gap-2 mb-2">
+                          <Badge variant="secondary">{affirmation.category}</Badge>
+                          {affirmation.tags.map((tag) => (
+                            <Badge key={tag} variant="outline">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                        <p className="text-sm text-gray-500">Created by: {affirmation.created_by}</p>
+                      </div>
+                      <Button
+                        variant={affirmation.is_active ? "destructive" : "default"}
+                        size="sm"
+                        onClick={() => toggleAffirmation(affirmation.id, affirmation.is_active)}
+                      >
+                        {affirmation.is_active ? "Deactivate" : "Activate"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </TabsContent>
 
