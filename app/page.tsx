@@ -29,8 +29,9 @@ interface TodaysAffirmation {
 export default function HomePage() {
   const [affirmation, setAffirmation] = useState<TodaysAffirmation | null>(null)
   const [loading, setLoading] = useState(true)
-  const [responded, setResponded] = useState(false)
-  const [response, setResponse] = useState<"affirmed" | "not_for_me" | null>(null)
+  const [responded, setResponded] = useState(false) // True if user has affirmed or skipped today
+  const [response, setResponse] = useState<"affirmed" | "not_for_me" | null>(null) // User's actual response
+
   const [stats, setStats] = useState({ totalAffirmations: 0, streak: 0, successRate: 0 })
   const [showSecondary, setShowSecondary] = useState(false)
 
@@ -111,7 +112,7 @@ export default function HomePage() {
     }
   }
 
-  const handleResponse = async (userResponse: "affirmed" | "not_for_me") => {
+  const handleUserResponse = async (userResponse: "affirmed" | "not_for_me") => {
     setResponse(userResponse)
     setResponded(true)
 
@@ -152,6 +153,9 @@ export default function HomePage() {
         setRecordedAudioURL(audioUrl)
         // Stop the stream tracks to release microphone
         stream.getTracks().forEach((track) => track.stop())
+
+        // Automatically affirm after recording is stopped
+        handleUserResponse("affirmed")
       }
 
       mediaRecorderRef.current.start()
@@ -232,16 +236,44 @@ export default function HomePage() {
                 "{affirmation?.content}"
               </blockquote>
 
+              {/* Main Action Button */}
               {!responded ? (
                 <div className="flex flex-col gap-4">
+                  {!recording && !recordedAudioURL && (
+                    <Button
+                      onClick={startRecording}
+                      className="w-full py-4 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
+                    >
+                      <Mic className="mr-2 h-5 w-5" /> Record your Affirmation
+                    </Button>
+                  )}
+                  {recording && (
+                    <Button
+                      onClick={stopRecording}
+                      className="w-full py-4 text-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 hover:border-red-500/50 backdrop-blur-sm font-medium"
+                    >
+                      <StopCircle className="mr-2 h-5 w-5" /> Stop Recording
+                    </Button>
+                  )}
+                  {recordedAudioURL && !recording && (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={playRecording}
+                        className="flex-1 py-4 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
+                      >
+                        <Play className="mr-2 h-5 w-5" /> Play your Affirmation
+                      </Button>
+                      <Button
+                        onClick={clearRecording}
+                        variant="ghost"
+                        className="py-3 text-white/70 hover:text-white hover:bg-white/10 font-light"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  )}
                   <Button
-                    onClick={() => handleResponse("affirmed")}
-                    className="w-full py-4 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
-                  >
-                    I Affirm
-                  </Button>
-                  <Button
-                    onClick={() => handleResponse("not_for_me")}
+                    onClick={() => handleUserResponse("not_for_me")}
                     variant="ghost"
                     className="w-full py-3 text-white/70 hover:text-white hover:bg-white/10 font-light"
                   >
@@ -256,48 +288,23 @@ export default function HomePage() {
                     <div className="text-white/70 text-lg">Skipped</div>
                   )}
                   <p className="text-white/60 text-base">See you tomorrow</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Audio Recording Section */}
-        <div className="mb-8">
-          <Card className="bg-white/10 backdrop-blur-sm border-white/20 shadow-2xl">
-            <CardContent className="p-6 text-center space-y-4">
-              <h3 className="text-white text-lg font-light">Record Your Voice</h3>
-              {!recordedAudioURL && !recording && (
-                <Button
-                  onClick={startRecording}
-                  className="w-full py-3 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
-                >
-                  <Mic className="mr-2 h-5 w-5" /> Record
-                </Button>
-              )}
-              {recording && (
-                <Button
-                  onClick={stopRecording}
-                  className="w-full py-3 text-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 hover:border-red-500/50 backdrop-blur-sm font-medium"
-                >
-                  <StopCircle className="mr-2 h-5 w-5" /> Stop Recording
-                </Button>
-              )}
-              {recordedAudioURL && (
-                <div className="flex gap-2 justify-center">
-                  <Button
-                    onClick={playRecording}
-                    className="flex-1 py-3 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
-                  >
-                    <Play className="mr-2 h-5 w-5" /> Play
-                  </Button>
-                  <Button
-                    onClick={clearRecording}
-                    variant="ghost"
-                    className="py-3 text-white/70 hover:text-white hover:bg-white/10 font-light"
-                  >
-                    <Trash2 className="h-5 w-5" /> Clear
-                  </Button>
+                  {recordedAudioURL && (
+                    <div className="flex gap-2 justify-center">
+                      <Button
+                        onClick={playRecording}
+                        className="flex-1 py-3 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
+                      >
+                        <Play className="mr-2 h-5 w-5" /> Play your Affirmation
+                      </Button>
+                      <Button
+                        onClick={clearRecording}
+                        variant="ghost"
+                        className="py-3 text-white/70 hover:text-white hover:bg-white/10 font-light"
+                      >
+                        <Trash2 className="h-5 w-5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
