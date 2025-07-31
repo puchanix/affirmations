@@ -1,10 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Sparkles, Flame, Settings, BarChart3, LogOut, ChevronDown, ChevronUp } from "lucide-react"
+import {
+  Sparkles,
+  Flame,
+  Settings,
+  BarChart3,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+  Mic,
+  StopCircle,
+  Play,
+  Trash2,
+} from "lucide-react"
 import { useAuth } from "@/lib/auth-context"
 
 interface TodaysAffirmation {
@@ -22,6 +34,12 @@ export default function HomePage() {
   const [stats, setStats] = useState({ totalAffirmations: 0, streak: 0, successRate: 0 })
   const [showSecondary, setShowSecondary] = useState(false)
 
+  // State for audio recording
+  const [recording, setRecording] = useState(false)
+  const [recordedAudioURL, setRecordedAudioURL] = useState<string | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
+
   const { user, logout } = useAuth()
 
   useEffect(() => {
@@ -31,6 +49,15 @@ export default function HomePage() {
       checkTodaysResponse()
     }
   }, [user])
+
+  // Cleanup recorded audio URL when component unmounts or URL changes
+  useEffect(() => {
+    return () => {
+      if (recordedAudioURL) {
+        URL.revokeObjectURL(recordedAudioURL)
+      }
+    }
+  }, [recordedAudioURL])
 
   const loadTodaysAffirmation = async () => {
     try {
@@ -108,6 +135,55 @@ export default function HomePage() {
     }
   }
 
+  // Audio recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      mediaRecorderRef.current = new MediaRecorder(stream)
+      audioChunksRef.current = []
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data)
+      }
+
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" })
+        const audioUrl = URL.createObjectURL(audioBlob)
+        setRecordedAudioURL(audioUrl)
+        // Stop the stream tracks to release microphone
+        stream.getTracks().forEach((track) => track.stop())
+      }
+
+      mediaRecorderRef.current.start()
+      setRecording(true)
+    } catch (err) {
+      console.error("Error accessing microphone:", err)
+      alert("Could not access microphone. Please ensure it's connected and permissions are granted.")
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop()
+      setRecording(false)
+    }
+  }
+
+  const playRecording = () => {
+    if (recordedAudioURL) {
+      const audio = new Audio(recordedAudioURL)
+      audio.play()
+    }
+  }
+
+  const clearRecording = () => {
+    if (recordedAudioURL) {
+      URL.revokeObjectURL(recordedAudioURL) // Clean up the URL
+    }
+    setRecordedAudioURL(null)
+    audioChunksRef.current = []
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen gradient-purple-main radial-pattern flex items-center justify-center">
@@ -180,6 +256,48 @@ export default function HomePage() {
                     <div className="text-white/70 text-lg">Skipped</div>
                   )}
                   <p className="text-white/60 text-base">See you tomorrow</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Audio Recording Section */}
+        <div className="mb-8">
+          <Card className="bg-white/10 backdrop-blur-sm border-white/20 shadow-2xl">
+            <CardContent className="p-6 text-center space-y-4">
+              <h3 className="text-white text-lg font-light">Record Your Voice</h3>
+              {!recordedAudioURL && !recording && (
+                <Button
+                  onClick={startRecording}
+                  className="w-full py-3 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
+                >
+                  <Mic className="mr-2 h-5 w-5" /> Record
+                </Button>
+              )}
+              {recording && (
+                <Button
+                  onClick={stopRecording}
+                  className="w-full py-3 text-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 hover:border-red-500/50 backdrop-blur-sm font-medium"
+                >
+                  <StopCircle className="mr-2 h-5 w-5" /> Stop Recording
+                </Button>
+              )}
+              {recordedAudioURL && (
+                <div className="flex gap-2 justify-center">
+                  <Button
+                    onClick={playRecording}
+                    className="flex-1 py-3 text-lg bg-white/20 hover:bg-white/30 text-white border border-white/30 hover:border-white/50 backdrop-blur-sm font-medium"
+                  >
+                    <Play className="mr-2 h-5 w-5" /> Play
+                  </Button>
+                  <Button
+                    onClick={clearRecording}
+                    variant="ghost"
+                    className="py-3 text-white/70 hover:text-white hover:bg-white/10 font-light"
+                  >
+                    <Trash2 className="h-5 w-5" /> Clear
+                  </Button>
                 </div>
               )}
             </CardContent>
